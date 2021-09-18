@@ -1,0 +1,11 @@
+dataset:
+  path: ../../input/ai-hackaton
+  train: train.csv
+  test: test.csv
+
+optimization:
+  trials: 100
+  params: best_lgbm_params.yaml
+
+model:
+  fold: 5

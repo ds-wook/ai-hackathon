@@ -7,14 +7,7 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.stats import kurtosis, skew
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import (
-    MaxAbsScaler,
-    MinMaxScaler,
-    OneHotEncoder,
-    PowerTransformer,
-    RobustScaler,
-    StandardScaler,
-)
+from sklearn.preprocessing import OneHotEncoder
 from tqdm import tqdm
 
 
@@ -57,7 +50,7 @@ class KMeansFeaturizer:
         self.cluster_centers_ = km_model.cluster_centers_
         return self
 
-    def transform(self, X: pd.DataFrame, y: Optional[pd.Series] = None):
+    def transform(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> pd.DataFrame:
         clusters = self.km_model.predict(X)
         onehot = self.cluster_encoder.transform(clusters.reshape(-1, 1)).toarray()
         max_col = onehot.shape[1]
@@ -136,14 +129,44 @@ def ft_trans(name: str, train: pd.DataFrame, test: pd.DataFrame):
     return train_df, test_df
 
 
-def time_log_data(data: pd.DataFrame, data_name: str, num: int, user_id: int, t: int):
-    target_time = float(num[0] + "." + num[1:])
-    try:
-        globals()["log_" + num + "_" + data_name][user_id][t] = (
-            data[user_id][t + int(target_time // 0.02)] - data[user_id][t]
-        )
-    except:
-        pass
+def count_stop_moving(data: pd.DataFrame):
+    columns = ["acc_x", "acc_y", "acc_z", "gy_x", "gy_y", "gy_z"]
+    new_columns = ["count_stop_moving_" + x for x in columns]
+    now_cum_data = pd.DataFrame()
+
+    for user_id in tqdm(data.id.unique()):
+        user_values = [user_id]
+        for column in columns:
+            target_data = data.query("id == @user_id")[[column]]
+            cumsum_data = np.cumsum(target_data).iloc[:-1]
+            target_data = target_data.iloc[1:]
+
+            target_data.index = range(len(target_data))
+            cumsum_data.index = range(len(cumsum_data))
+            cumsum_data.columns = ["cum_" + column]
+
+            concated = pd.concat([target_data, cumsum_data], axis=1)
+
+            concated["if_changed"] = concated.apply(
+                lambda x: 1 if (abs(x["cum_" + column]) - abs(x[column])) <= 0 else 0,
+                axis=1,
+            )
+
+            if concated.query("if_changed == 1").shape[0] > 0:
+                target_value = (
+                    concated.query("if_changed == 1")
+                    .apply(
+                        lambda x: 0 if x["cum_" + column] * x[column] > 0 else 1, axis=1
+                    )
+                    .sum()
+                )
+                user_values.append(target_value)
+            else:
+                user_values.append(0)
+        now_cum_data = now_cum_data.append([user_values])
+    now_cum_data.columns = ["id"] + new_columns
+
+    return now_cum_data
 
 
 def make_dataset(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -187,242 +210,28 @@ def make_dataset(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     test_x["gy_xyz"] = (
         test_x["gy_x"] ** 2 + test_x["gy_y"] ** 2 + test_x["gy_z"] ** 2
     ) ** (1 / 3)
-    agg_train_x = pd.pivot_table(
-        train_x,
-        values=train_x.columns[2:],
-        index="id",
-        aggfunc=[
-            "sum",
-            "mean",
-            "mad",
-            "median",
-            "min",
-            "max",
-            "std",
-            "var",
-            "sem",
-            "skew",
-            "quantile",
-        ],
-    ).reset_index()
-    print("==TRAIN DATA DONE ==")
-    agg_test_x = pd.pivot_table(
-        test_x,
-        values=test_x.columns[2:],
-        index="id",
-        aggfunc=[
-            "sum",
-            "mean",
-            "mad",
-            "median",
-            "min",
-            "max",
-            "std",
-            "var",
-            "sem",
-            "skew",
-            "quantile",
-        ],
-    ).reset_index()
-
-    columns = ["id"] + [agg + "_" + name for agg, name in agg_train_x.columns][1:]
+    func = [
+        "sum",
+        "mean",
+        "mad",
+        "median",
+        "min",
+        "max",
+        "std",
+        "var",
+        "sem",
+        "skew",
+        "quantile",
+    ]
+    agg_dict = {col: func for col in train_x.columns[2:]}
+    agg_train_x = train_x.groupby(["id"]).agg(agg_dict).reset_index()
+    agg_test_x = test_x.groupby(["id"]).agg(agg_dict).reset_index()
+    columns = ["id"] + [agg + "_" + name for name, agg in agg_train_x.columns][1:]
     agg_train_x.columns = columns
     agg_test_x.columns = columns
-    agg_train_x.to_csv(path + "features/agg_train.csv", index=False)
-    agg_test_x.to_csv(path + "features/agg_test.csv", index=False)
-
-    grouped_train_x = train_x.iloc[:, 2:].values.reshape(-1, 600, train_x.shape[1] - 2)
-    grouped_test_x = test_x.iloc[:, 2:].values.reshape(-1, 600, test_x.shape[1] - 2)
-
-    for num in ["002", "010", "020", "030", "050", "100", "200", "300", "600"]:
-        target_time = float(num[0] + "." + num[1:])
-        globals()["log_" + num + "_train_x"] = np.zeros(
-            (
-                grouped_train_x.shape[0],
-                grouped_train_x.shape[1] - int(target_time // 0.02),
-                grouped_train_x.shape[2],
-            )
-        )
-        globals()["log_" + num + "_test_x"] = np.zeros(
-            (
-                grouped_test_x.shape[0],
-                grouped_test_x.shape[1] - int(target_time // 0.02),
-                grouped_test_x.shape[2],
-            )
-        )
-
-    for data, data_name in zip(
-        [grouped_train_x, grouped_test_x], ["train_x", "test_x"]
-    ):
-        for user_id in tqdm(range(data.shape[0])):
-            for t in range(599):
-                for num in [
-                    "002",
-                    "010",
-                    "020",
-                    "030",
-                    "050",
-                    "100",
-                    "200",
-                    "300",
-                    "600",
-                ]:
-                    time_log_data(data, data_name, num, user_id, t)
-    print("== Making Log Data Done ==")
-    columns = ["id"] + list(train_x.columns[2:])
-
-    for data_name in ["train_x", "test_x"]:
-        for num in ["002", "010", "020", "030", "050", "100", "200", "300", "600"]:
-            log_num = globals()["log_" + num + "_" + data_name].shape[1]
-            globals()["log_" + num + "_" + data_name] = pd.DataFrame(
-                globals()["log_" + num + "_" + data_name].reshape(-1, 14)
-            ).reset_index()
-            globals()["log_" + num + "_" + data_name].columns = columns
-            globals()["log_" + num + "_" + data_name].id = globals()[
-                "log_" + num + "_" + data_name
-            ].id.apply(lambda x: x // log_num)
-    print("==Log Data to DF done==")
-
-    for num in tqdm(["002", "010", "020", "030", "050", "100", "200", "300", "600"]):
-        globals()["log_" + num + "_train_x"] = pd.pivot_table(
-            globals()["log_" + num + "_train_x"],
-            values=globals()["log_" + num + "_train_x"].columns[1:],
-            index="id",
-            aggfunc=[
-                "sum",
-                "mean",
-                "mad",  # 합, 평균, 평균 절대 편차
-                "median",
-                "min",
-                "max",  # 중앙값, 최소값, 최대값
-                "std",
-                "var",  # 베셀 보정 표본 표준편차, 비편향 편차
-                "sem",
-                "skew",
-                "quantile",
-            ],  # 평균의 표준오차, 표본왜도, 포본분위수
-        ).reset_index()
-
-        globals()["log_" + num + "_test_x"] = pd.pivot_table(
-            globals()["log_" + num + "_test_x"],
-            values=globals()["log_" + num + "_test_x"].columns[1:],
-            index="id",
-            aggfunc=[
-                "sum",
-                "mean",
-                "mad",
-                "median",
-                "min",
-                "max",
-                "std",
-                "var",
-                "sem",
-                "skew",
-                "quantile",
-            ],
-        ).reset_index()
-        columns = ["id"] + [
-            "log_change_" + num + "_" + agg + "_" + name
-            for agg, name in globals()["log_" + num + "_train_x"].columns
-        ][1:]
-        globals()["log_" + num + "_train_x"].columns = columns
-        globals()["log_" + num + "_test_x"].columns = columns
-
-    log_change_train = pd.DataFrame(list(range(3125)), columns=["id"])
-    log_change_test = pd.DataFrame(list(range(3125, 3907)), columns=["id"])
-
-    for num in ["002", "010", "020", "030", "050", "100", "200", "300", "600"]:
-        log_change_train = pd.merge(
-            log_change_train, globals()["log_" + num + "_train_x"]
-        )
-        globals()["log_" + num + "_test_x"].id = (
-            globals()["log_" + num + "_test_x"].id + 3125
-        )
-        log_change_test = pd.merge(log_change_test, globals()["log_" + num + "_test_x"])
-    print("==Log CHANGE DF to Pivot Table Done==")
-    log_change_train.to_csv(path + "features/log_change_train.csv", index=False)
-    log_change_test.to_csv(path + "features/log_change_test.csv", index=False)
-
-    columns = ["id"] + list(train_x.columns[2:])
-    for num in tqdm(["002", "010", "020", "030", "050", "100", "200", "300", "600"]):
-        target_time = float(num[0] + "." + num[1:])
-        skip_num = int(num) // 2
-        target_index = list(range(0, 600, skip_num)) + [599]
-        globals()["log_" + num + "_train_x"] = pd.DataFrame(
-            grouped_train_x[:, target_index, :].reshape(-1, 14)
-        ).reset_index()
-        globals()["log_" + num + "_train_x"].columns = columns
-        globals()["log_" + num + "_train_x"].id = globals()[
-            "log_" + num + "_train_x"
-        ].id.apply(lambda x: x // len(target_index))
-        globals()["log_" + num + "_test_x"] = pd.DataFrame(
-            grouped_test_x[:, target_index, :].reshape(-1, 14)
-        ).reset_index()
-        globals()["log_" + num + "_test_x"].columns = columns
-        globals()["log_" + num + "_test_x"].id = globals()[
-            "log_" + num + "_test_x"
-        ].id.apply(lambda x: x // len(target_index))
-
-    for num in tqdm(["002", "010", "020", "030", "050", "100", "200", "300", "600"]):
-        globals()["log_" + num + "_train_x"] = pd.pivot_table(
-            globals()["log_" + num + "_train_x"],
-            values=globals()["log_" + num + "_train_x"].columns[1:],
-            index="id",
-            aggfunc=[
-                "sum",
-                "mean",
-                "mad",  # 합, 평균, 평균 절대 편차
-                "median",
-                "min",
-                "max",  # 중앙값, 최소값, 최대값
-                "std",
-                "var",  # 베셀 보정 표본 표준편차, 비편향 편차
-                "sem",
-                "skew",
-                "quantile",
-            ],  # 평균의 표준오차, 표본왜도, 포본분위수
-        ).reset_index()
-
-        globals()["log_" + num + "_test_x"] = pd.pivot_table(
-            globals()["log_" + num + "_test_x"],
-            values=globals()["log_" + num + "_test_x"].columns[1:],
-            index="id",
-            aggfunc=[
-                "sum",
-                "mean",
-                "mad",
-                "median",
-                "min",
-                "max",
-                "std",
-                "var",
-                "sem",
-                "skew",
-                "quantile",
-            ],
-        ).reset_index()
-        columns = ["id"] + [
-            "log_skip_" + num + "_" + agg + "_" + name
-            for agg, name in globals()["log_" + num + "_train_x"].columns
-        ][1:]
-        globals()["log_" + num + "_train_x"].columns = columns
-        globals()["log_" + num + "_test_x"].columns = columns
-
-    log_skip_train = pd.DataFrame(list(range(3125)), columns=["id"])
-    log_skip_test = pd.DataFrame(list(range(3125, 3907)), columns=["id"])
-    for num in ["002", "010", "020", "030", "050", "100", "200", "300", "600"]:
-        log_skip_train = pd.merge(log_skip_train, globals()["log_" + num + "_train_x"])
-        globals()["log_" + num + "_test_x"].id = (
-            globals()["log_" + num + "_test_x"].id + 3125
-        )
-        log_skip_test = pd.merge(log_skip_test, globals()["log_" + num + "_test_x"])
-
-    log_skip_train.to_csv("features/log_skip_train.csv", index=False)
-    log_skip_test.to_csv("features/log_skip_test.csv", index=False)
 
     smoothed_train_x = pd.DataFrame()
     smoothed_test_x = pd.DataFrame()
-
     for user_id in tqdm(range(train_x["id"].nunique())):
         temp = train_x.query("id == @user_id")
         temp.iloc[:, 2:] = gaussian_filter1d(temp.iloc[:, 2:], axis=0, sigma=10)
@@ -433,44 +242,23 @@ def make_dataset(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
         temp.iloc[:, 2:] = gaussian_filter1d(temp.iloc[:, 2:], axis=0, sigma=10)
         smoothed_test_x = pd.concat([smoothed_test_x, temp])
 
-    smoothed_agg_train_x = pd.pivot_table(
-        train_x,
-        values=train_x.columns[2:],
-        index="id",
-        aggfunc=[
-            "sum",
-            "mean",
-            "mad",  # 합, 평균, 평균 절대 편차
-            "median",
-            "min",
-            "max",  # 중앙값, 최소값, 최대값
-            "std",
-            "var",  # 베셀 보정 표본 표준편차, 비편향 편차
-            "sem",
-            "skew",
-            "quantile",
-        ],  # 평균의 표준오차, 표본왜도, 포본분위수
-    ).reset_index()
-    print("==TRAIN DATA DONE ==")
-    smoothed_agg_test_x = pd.pivot_table(
-        test_x,
-        values=test_x.columns[2:],
-        index="id",
-        aggfunc=[
-            "sum",
-            "mean",
-            "mad",
-            "median",
-            "min",
-            "max",
-            "std",
-            "var",
-            "sem",
-            "skew",
-            "quantile",
-        ],
-    ).reset_index()
-    print("==TEST DATA DONE ==")
+    func = [
+        "sum",
+        "mean",
+        "mad",
+        "median",
+        "min",
+        "max",
+        "std",
+        "var",
+        "sem",
+        "skew",
+        "quantile",
+    ]
+    agg_dict = {col: func for col in train_x.columns[2:]}
+    smoothed_agg_train_x = smoothed_train_x.groupby(["id"]).agg(agg_dict).reset_index()
+    smoothed_agg_test_x = smoothed_test_x.groupby(["id"]).agg(agg_dict).reset_index()
+
     columns = ["id"] + [
         "smoothed" + "_" + agg + "_" + name
         for agg, name in smoothed_agg_train_x.columns
@@ -478,86 +266,29 @@ def make_dataset(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     smoothed_agg_train_x.columns = columns
     smoothed_agg_test_x.columns = columns
 
-    smoothed_agg_train_x.to_csv(path + "features/smoothed_agg_train.csv", index=False)
-    smoothed_agg_test_x.to_csv(path + "features/smoothed_agg_test.csv", index=False)
+    count_stop_moving_train = count_stop_moving(train_x)
+    count_stop_moving_test = count_stop_moving(test_x)
 
-    columns = ["acc_x", "acc_y", "acc_z", "gy_x", "gy_y", "gy_z"]
-    new_columns = ["count_stop_moving_" + x for x in columns]
-    now_cum_data = pd.DataFrame()
+    fft_train, fft_test = ft_trans("acc_xyz", train_x, test_x)
 
-    for user_id in tqdm(train_x.id.unique()):
-        user_values = [user_id]
-        for column in columns:
+    total_train_x = pd.concat(
+        [
+            agg_train_x,
+            smoothed_agg_train_x,
+            count_stop_moving_train,
+            fft_train,
+        ],
+        axis=1,
+    ).drop(columns=["id"])
 
-            target_data = train_x.query("id == @user_id")[[column]]
-            cumsum_data = np.cumsum(target_data).iloc[:-1]
-            target_data = target_data.iloc[1:]
+    total_test_x = pd.concat(
+        [
+            agg_test_x,
+            smoothed_agg_test_x,
+            count_stop_moving_test,
+            fft_test,
+        ],
+        axis=1,
+    ).drop(columns=["id"])
 
-            target_data.index = range(len(target_data))
-            cumsum_data.index = range(len(cumsum_data))
-            cumsum_data.columns = ["cum_" + column]
-
-            concated = pd.concat([target_data, cumsum_data], axis=1)
-
-            concated["if_changed"] = concated.apply(
-                lambda x: 1 if (abs(x["cum_" + column]) - abs(x[column])) <= 0 else 0,
-                axis=1,
-            )
-
-            if concated.query("if_changed == 1").shape[0] > 0:
-                target_value = (
-                    concated.query("if_changed == 1")
-                    .apply(
-                        lambda x: 0 if x["cum_" + column] * x[column] > 0 else 1, axis=1
-                    )
-                    .sum()
-                )
-                user_values.append(target_value)
-            else:
-                user_values.append(0)
-        now_cum_data = now_cum_data.append([user_values])
-    now_cum_data.columns = ["id"] + new_columns
-
-    now_cum_data.to_csv(path + "features/count_stop_moving_train.csv", index=False)
-
-    columns = ["acc_x", "acc_y", "acc_z", "gy_x", "gy_y", "gy_z"]
-    new_columns = ["count_stop_moving_" + x for x in columns]
-    now_cum_data = pd.DataFrame()
-
-    for user_id in tqdm(test_x.id.unique()):
-        user_values = [user_id]
-        for column in columns:
-
-            target_data = test_x.query("id == @user_id")[[column]]
-            cumsum_data = np.cumsum(target_data).iloc[:-1]
-            target_data = target_data.iloc[1:]
-
-            target_data.index = range(len(target_data))
-            cumsum_data.index = range(len(cumsum_data))
-            cumsum_data.columns = ["cum_" + column]
-
-            concated = pd.concat([target_data, cumsum_data], axis=1)
-
-            concated["if_changed"] = concated.apply(
-                lambda x: 1 if (abs(x["cum_" + column]) - abs(x[column])) <= 0 else 0,
-                axis=1,
-            )
-
-            if concated.query("if_changed == 1").shape[0] > 0:
-                target_value = (
-                    concated.query("if_changed == 1")
-                    .apply(
-                        lambda x: 0 if x["cum_" + column] * x[column] > 0 else 1, axis=1
-                    )
-                    .sum()
-                )
-                user_values.append(target_value)
-            else:
-                user_values.append(0)
-        now_cum_data = now_cum_data.append([user_values])
-    now_cum_data.columns = ["id"] + new_columns
-    now_cum_data.to_csv(path + "features/count_stop_moving_test.csv", index=False)
-
-    train_fft, test_fft = ft_trans("acc_xyz", train_x, test_x)
-    train_fft.to_csv(path + "features/fft_train.csv", index=False)
-    test_fft.to_csv(path + "features/fft_test.csv", index=False)
+    return total_train_x, total_test_x
