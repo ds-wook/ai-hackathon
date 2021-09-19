@@ -1,0 +1,19 @@
+dataset:
+  path: ../../input/ai-hackaton
+  train: train_preprocess.csv
+  test: test_preprocess.csv
+model:
+  fold: 5
+  verbose: 100
+
+params:
+  loss_function: MultiClass
+  eval_metric: MultiClass
+  random_seed: 20
+  iterations: 26000
+  learning_rate: 0.007932
+  depth: 3
+
+submit:
+  name: cat_baseline.csv
+  path: ../../submit

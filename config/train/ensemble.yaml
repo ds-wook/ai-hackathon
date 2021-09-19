@@ -1,0 +1,3 @@
+submit:
+  model1: cat_baseline.csv
+  model2: 5fold_lightgbm.csv

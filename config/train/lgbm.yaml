@@ -6,21 +6,22 @@ model:
   verbose: 100
 
 params:
-  random_state: 42
   boosting_type: gbdt
-  n_jobs: -1
   objective: multiclass
+  n_estimators: 26000
+  n_jobs: -1
+  random_state: 42
+  learning_rate: 0.007778313207178196
+  max_depth: 3
   metric: multi_logloss
-  n_estimators: 10000
-  colsample_bytree: 0.7631060030933504
-  learning_rate: 0.22097704117952338
-  max_depth: 17
-  min_child_samples: 99
-  min_child_weight: 0.8266762761991168
-  num_leaves: 30
-  reg_alpha: 0.9327260596737305
-  reg_lambda: 0.8285798426419753
-  subsample: 0.5826444493948311
+  min_child_samples: 106
+  min_child_weight: 0.8041750109464992
+  num_leaves: 22
+  colsample_bytree: 0.16709557931179375
+  reg_alpha: 0.28812516459050697
+  reg_lambda: 0.547269122326666
+  subsample: 0.9881982429404655
+
 submit:
   path: ../../submit
-  name: lgbm_baseline.csv
+  name: 5fold_lightgbm.csv
