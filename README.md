@@ -4,9 +4,9 @@
 ## Benchmark
 |Model|CV|Public|
 |-----|--|------|
-|LGBM(5-Fold)|0.73072|-|
+|LGBM(5-Fold)|0.67842|-|
 |XGB(5-Fold)|||
-|Cat(5-Fold)|||
+|Cat|0.57042||
 
 ## Requirement
 + numpy

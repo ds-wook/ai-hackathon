@@ -17,7 +17,7 @@ from optuna.samplers import TPESampler
 from optuna.study import Study
 from optuna.trial import FrozenTrial, Trial
 from sklearn.metrics import log_loss
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
@@ -94,6 +94,20 @@ class BayesianOptimizer:
         params["objective"] = "multi:softmax"
         params["eval_metric"] = "mlogloss"
         with open(to_absolute_path("../../config/train/xgb.yaml")) as f:
+            train_dict = yaml.load(f, Loader=yaml.FullLoader)
+        train_dict["params"] = params
+
+        with open(to_absolute_path("../../config/train/" + params_name), "w") as p:
+            yaml.dump(train_dict, p)
+
+    @staticmethod
+    def cat_save_params(study: optuna.create_study, params_name: str):
+        params = study.best_trial.params
+        params["random_seed"] = 20
+        params["n_estimators"] = 20000
+        params["loss_function"] = "MultiClass"
+        params["eval_metric"] = "MultiClass"
+        with open(to_absolute_path("../../config/train/cat.yaml")) as f:
             train_dict = yaml.load(f, Loader=yaml.FullLoader)
         train_dict["params"] = params
 
@@ -216,34 +230,25 @@ def cat_objective(
         "iterations": 26000,
         "learning_rate": trial.suggest_uniform("learning_rate", 1e-3, 1e-2),
         "l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1e-1, 1.0, log=True),
-        "max_depth": trial.suggest_int("max_depth", 4, 10),
+        "max_depth": trial.suggest_int("max_depth", 3, 10),
         "bagging_temperature": trial.suggest_int("bagging_temperature", 1, 10),
-        # "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 5, 100),
-        # "max_bin": trial.suggest_int("max_bin", 200, 500),
     }
+    X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2)
+    # create dataset
+    train_data = Pool(data=X_train, label=y_train)
+    valid_data = Pool(data=X_valid, label=y_valid)
 
-    kf = StratifiedKFold(n_splits=n_fold, random_state=42, shuffle=True)
-    splits = kf.split(X, y)
-    cat_oof = np.zeros((X.shape[0], 61))
-
-    for fold, (train_idx, valid_idx) in enumerate(splits, 1):
-        # create dataset
-        X_train, X_valid = X.iloc[train_idx], X.iloc[valid_idx]
-        y_train, y_valid = y.iloc[train_idx], y.iloc[valid_idx]
-        train_data = Pool(data=X_train, label=y_train)
-        valid_data = Pool(data=X_valid, label=y_valid)
-
-        # model
-        model = CatBoostClassifier(**params)
-        model.fit(
-            train_data,
-            eval_set=valid_data,
-            early_stopping_rounds=50,
-            use_best_model=True,
-            verbose=False,
-        )
-        # validation
-        cat_oof[valid_idx] = model.predict_proba(X_valid)
+    # model
+    model = CatBoostClassifier(**params)
+    model.fit(
+        train_data,
+        eval_set=valid_data,
+        early_stopping_rounds=100,
+        use_best_model=True,
+        verbose=1000,
+    )
+    # validation
+    cat_oof = model.predict_proba(X_valid)
 
     log_score = log_loss(y, cat_oof)
     return log_score

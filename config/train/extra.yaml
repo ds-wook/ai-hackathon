@@ -3,11 +3,9 @@ dataset:
   train: final_train.csv
   test: final_test.csv
 
-weight:
-  w1: 0.5
-  w2: 0.5
-
+model:
+  fold: 5
 
 submit:
   path: ../../submit
-  name: 5fold_stacking_svm.csv
+  name: 5fold_extra.csv
