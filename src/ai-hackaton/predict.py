@@ -1,5 +1,4 @@
 import hydra
-import numpy as np
 import pandas as pd
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig

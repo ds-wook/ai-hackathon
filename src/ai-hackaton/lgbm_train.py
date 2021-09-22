@@ -1,6 +1,6 @@
 import hydra
 import pandas as pd
-from data.features import augment, select_features
+from data.features import select_features
 from hydra.utils import to_absolute_path
 from model.boosting_tree import train_kfold_lightgbm
 from omegaconf import DictConfig
@@ -13,11 +13,7 @@ def _main(cfg: DictConfig):
     X = pd.read_csv(path + cfg.dataset.train)
     X_test = pd.read_csv(path + cfg.dataset.test)
     y = train_y["label"]
-    train = pd.concat([X, y], axis=1)
-    train = augment(train)
 
-    X = train.drop("label", axis=1)
-    y = train.label
     # select features
     X, X_test = select_features(X, y, X_test)
     # model
