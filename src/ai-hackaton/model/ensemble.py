@@ -19,8 +19,8 @@ def train_kfold_svm(
 ) -> np.ndarray:
     kf = StratifiedKFold(n_splits=n_fold, random_state=42, shuffle=True)
     splits = kf.split(X, y)
-    svm_oof = np.zeros((X.shape[0], 61))
-    svm_preds = np.zeros((X_test.shape[0], 61))
+    svm_oof = np.zeros(X.shape[0])
+    svm_preds = np.zeros(X_test.shape[0])
 
     run = neptune.init(
         project="ds-wook/ai-hackaton", tags=["Extra-Tree", "Stratified KFold"]

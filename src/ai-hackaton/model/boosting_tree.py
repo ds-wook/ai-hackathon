@@ -1,12 +1,10 @@
 import warnings
 from typing import Any, Dict, Optional, Tuple, Union
 
-import joblib
 import neptune.new as neptune
 import numpy as np
 import pandas as pd
 from catboost import CatBoostClassifier, Pool
-from hydra.utils import to_absolute_path
 from lightgbm import LGBMClassifier
 from neptune.new.integrations import lightgbm, xgboost
 from sklearn.metrics import log_loss
@@ -27,8 +25,8 @@ def train_kfold_lightgbm(
 
     kf = StratifiedKFold(n_splits=n_fold, random_state=42, shuffle=True)
     splits = kf.split(X, y)
-    lgb_oof = np.zeros((X.shape[0], 61))
-    lgb_preds = np.zeros((X_test.shape[0], 61))
+    lgb_oof = np.zeros(X.shape[0])
+    lgb_preds = np.zeros(X_test.shape[0])
 
     run = neptune.init(
         project="ds-wook/ai-hackaton", tags=["LightGBM", "Stratified KFold"]
@@ -55,13 +53,10 @@ def train_kfold_lightgbm(
         # validation
         lgb_oof[valid_idx] = model.predict_proba(
             X_valid, num_iteration=model.best_iteration_
-        )
+        )[:, 1]
         lgb_preds += (
-            model.predict_proba(X_test, num_iteration=model.best_iteration_) / n_fold
+            model.predict_proba(X_test, num_iteration=model.best_iteration_)[:, 1] / n_fold
         )
-        model_path = to_absolute_path(f"../../models/lgbm_model/lgbm_kfold{fold}.pkl")
-        # save model
-        joblib.dump(model, model_path)
 
         # Log summary metadata to the same run under the "lgbm_summary" namespace
         run[f"lgbm_summary/fold_{fold}"] = lightgbm.create_booster_summary(
@@ -73,7 +68,7 @@ def train_kfold_lightgbm(
             y_true=y_valid,
         )
 
-    print(f"Total Performance RMSPE: {log_loss(y, lgb_oof)}")
+    print(f"Total Performance LogLoss: {log_loss(y, lgb_oof)}")
     run.stop()
 
     return lgb_oof, lgb_preds

@@ -6,8 +6,9 @@ dataset:
 weight:
   w1: 0.5
   w2: 0.5
-
+  w3: 0
+  w4: 0
 
 submit:
   path: ../../submit
-  name: 5fold_stacking_svm.csv
+  name: cnn_cat_lightgbm_ensemble.csv

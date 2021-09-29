@@ -1,6 +1,7 @@
 dataset:
   path: ../../input/ai-hackaton
-  train: train_preprocess.csv
+  train: final_train.csv
+  test: final_test.csv
 
 optimization:
   trials: 100

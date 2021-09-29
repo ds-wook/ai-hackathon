@@ -9,13 +9,12 @@ model:
 
 params:
   boosting_type: gbdt
-  objective: multiclass
+  objective: binary
   n_estimators: 26000
   n_jobs: -1
   random_state: 42
-  learning_rate: 0.007778313207178196
+  learning_rate: 0.05
   max_depth: 3
-  metric: multi_logloss
   min_child_samples: 106
   min_child_weight: 0.8041750109464992
   num_leaves: 22
@@ -26,4 +25,4 @@ params:
 
 submit:
   path: ../../submit
-  name: 5fold_lightgbm.csv
+  name: is_exercise.csv

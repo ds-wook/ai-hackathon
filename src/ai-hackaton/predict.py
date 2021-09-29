@@ -10,10 +10,14 @@ def _main(cfg: DictConfig):
     submit_path = to_absolute_path(cfg.submit.path) + "/"
     submission = pd.read_csv(path + "sample_submission.csv")
 
-    cnn_fold = pd.read_csv(submit_path + "10fold_cnn.csv")
-    cat_depth = pd.read_csv(submit_path + "catboost_depth4.csv")
+    cnn_preds = pd.read_csv(submit_path + "10fold_cnn.csv")
+    cat_preds = pd.read_csv(submit_path + "catboost_depth4.csv")
+    xgb_preds = pd.read_csv(submit_path + "xgb_stacking_cnn.csv")
+
     submission.iloc[:, 1:] = (
-        cfg.weight.w1 * cnn_fold.iloc[:, 1:] + cfg.weight.w2 * cat_depth.iloc[:, 1:]
+        cfg.weight.w1 * cnn_preds.iloc[:, 1:]
+        + cfg.weight.w2 * cat_preds.iloc[:, 1:]
+        + cfg.weight.w3 * xgb_preds.iloc[:, 1:]
     )
 
     submission.to_csv(submit_path + cfg.submit.name, index=False)

@@ -122,15 +122,15 @@ def lgbm_objective(
     n_fold: int,
 ) -> float:
     params = {
-        "learning_rate": trial.suggest_float("learning_rate", 1e-01, 2e-01),
+        "learning_rate": trial.suggest_float("learning_rate", 1e-03, 1e-02),
         "reg_alpha": trial.suggest_float("reg_alpha", 1e-02, 1),
         "reg_lambda": trial.suggest_float("reg_lambda", 1e-02, 1),
         "num_leaves": trial.suggest_int("num_leaves", 16, 64),
         "min_child_weight": trial.suggest_float("min_child_weight", 1e-02, 1),
         "colsample_bytree": trial.suggest_uniform("colsample_bytree", 0.1, 1),
         "subsample": trial.suggest_uniform("subsample", 0.1, 1),
-        "min_child_samples": trial.suggest_int("min_child_samples", 32, 128),
-        "max_depth": trial.suggest_int("max_depth", 4, 32),
+        "min_child_samples": trial.suggest_int("min_child_samples", 32, 64),
+        "max_depth": trial.suggest_int("max_depth", 4, 16),
         "n_estimators": 10000,
         "random_state": 42,
         "objective": "multiclass",

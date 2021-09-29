@@ -24,4 +24,4 @@ params:
 
 submit:
   path: ../../submit
-  name: feature_lightgbm.csv
+  name: feature_xgboost.csv
