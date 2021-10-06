@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 from catboost import CatBoostClassifier, Pool
 from lightgbm import LGBMClassifier
-from neptune.new.integrations import lightgbm, xgboost
+from neptune.new.integrations import xgboost
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import log_loss
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from xgboost import XGBClassifier
@@ -14,7 +15,7 @@ from xgboost import XGBClassifier
 warnings.filterwarnings("ignore")
 
 
-def train_kfold_lightgbm(
+def train_kfold_logistic(
     n_fold: int,
     X: pd.DataFrame,
     y: pd.DataFrame,
@@ -25,53 +26,24 @@ def train_kfold_lightgbm(
 
     kf = StratifiedKFold(n_splits=n_fold, random_state=42, shuffle=True)
     splits = kf.split(X, y)
-    lgb_oof = np.zeros(X.shape[0])
-    lgb_preds = np.zeros(X_test.shape[0])
-
-    run = neptune.init(
-        project="ds-wook/ai-hackaton", tags=["LightGBM", "Stratified KFold"]
-    )
+    lr_oof = np.zeros((X.shape[0], 61))
+    lr_preds = np.zeros((X_test.shape[0], 61))
 
     for fold, (train_idx, valid_idx) in enumerate(splits, 1):
         print("Fold :", fold)
-        neptune_callback = lightgbm.NeptuneCallback(
-            run=run, base_namespace=f"fold_{fold}"
-        )
         # create dataset
         X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
         X_valid, y_valid = X.iloc[valid_idx], y.iloc[valid_idx]
         # model
-        model = LGBMClassifier(**params)
-        model.fit(
-            X_train,
-            y_train,
-            eval_set=[(X_train, y_train), (X_valid, y_valid)],
-            early_stopping_rounds=50,
-            verbose=verbose,
-            callbacks=[neptune_callback],
-        )
+        model = LogisticRegression(**params)
+        model.fit(X_train, y_train)
         # validation
-        lgb_oof[valid_idx] = model.predict_proba(
-            X_valid, num_iteration=model.best_iteration_
-        )[:, 1]
-        lgb_preds += (
-            model.predict_proba(X_test, num_iteration=model.best_iteration_)[:, 1] / n_fold
-        )
+        lr_oof[valid_idx] = model.predict_proba(X_valid)
+        lr_preds += model.predict_proba(X_test) / n_fold
+        print(f"Fold{fold} Performance LogLoss: {log_loss(y_valid, lr_oof[valid_idx])}")
+    print(f"Total Performance LogLoss: {log_loss(y, lr_oof)}")
 
-        # Log summary metadata to the same run under the "lgbm_summary" namespace
-        run[f"lgbm_summary/fold_{fold}"] = lightgbm.create_booster_summary(
-            booster=model,
-            log_trees=True,
-            list_trees=[0, 1, 2, 3, 4],
-            max_num_features=20,
-            y_pred=lgb_oof[valid_idx],
-            y_true=y_valid,
-        )
-
-    print(f"Total Performance LogLoss: {log_loss(y, lgb_oof)}")
-    run.stop()
-
-    return lgb_oof, lgb_preds
+    return lr_oof, lr_preds
 
 
 def train_kfold_xgb(
@@ -133,8 +105,8 @@ def train_kfold_cat(
 ) -> Tuple[np.ndarray, np.ndarray]:
     folds = StratifiedKFold(n_splits=n_fold, shuffle=True, random_state=42)
     splits = folds.split(X, y)
-    cat_oof = np.zeros((X.shape[0], 61))
-    cat_preds = np.zeros((X_test.shape[0], 61))
+    cb_oof = np.zeros((X.shape[0], 61))
+    cb_preds = np.zeros((X_test.shape[0], 61))
 
     for fold, (train_idx, valid_idx) in enumerate(splits, 1):
         if verbose:
@@ -154,12 +126,12 @@ def train_kfold_cat(
             verbose=verbose,
         )
 
-        cat_oof[valid_idx] = model.predict_proba(X_valid)
-        cat_preds += model.predict_proba(X_test) / n_fold
+        cb_oof[valid_idx] = model.predict_proba(X_valid)
+        cb_preds += model.predict_proba(X_test) / n_fold
 
-    log_score = log_loss(y, cat_oof)
+    log_score = log_loss(y, cb_oof)
     print(f"Log Loss Score: {log_score:.5f}\n")
-    return cat_oof, cat_preds
+    return cb_oof, cb_preds
 
 
 def train_xgb(

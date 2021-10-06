@@ -333,7 +333,7 @@ def load_dataset(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     test_predict = model.predict(test_preprocess)
     test_preprocess["cluster"] = test_predict
 
-    column_name = list(train_preprocess.iloc[:, :247].columns)
+    column_name = train_preprocess.iloc[:, :247].columns.tolist()
     column_name.extend(
         [i[0] + "-" + i[1] for i in train_preprocess.iloc[:, 247:-1].columns]
     )

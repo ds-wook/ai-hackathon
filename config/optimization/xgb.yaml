@@ -8,3 +8,6 @@ optimization:
 
 model:
   fold: 5
+
+submit:
+  path: ../../submit
