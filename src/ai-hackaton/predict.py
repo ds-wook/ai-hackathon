@@ -10,12 +10,12 @@ def _main(cfg: DictConfig):
     submit_path = to_absolute_path(cfg.submit.path) + "/"
     submission = pd.read_csv(path + "sample_submission.csv")
 
-    cnn_preds = pd.read_csv(submit_path + "mem-128-2-N=2,M=14-10fold.csv")
-    cat_preds = pd.read_csv(submit_path + "xgb_10fold_stacking_ensemble.csv")
+    mem_preds = pd.read_csv(submit_path + "ensembled-submission.csv")
+    stacking_preds = pd.read_csv(submit_path + "final_xgb_stacking_10fold.csv")
 
     submission.iloc[:, 1:] = (
-        cfg.weight.w1 * cnn_preds.iloc[:, 1:]
-        + cfg.weight.w2 * cat_preds.iloc[:, 1:]
+        cfg.weight.w1 * mem_preds.iloc[:, 1:]
+        + cfg.weight.w2 * stacking_preds.iloc[:, 1:]
     )
 
     submission.to_csv(submit_path + cfg.submit.name, index=False)

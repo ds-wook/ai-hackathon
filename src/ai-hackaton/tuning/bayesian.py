@@ -183,3 +183,35 @@ def cat_objective(
 
     log_score = log_loss(y, cat_oof)
     return log_score
+
+
+def oof_objective(
+    trial: FrozenTrial,
+    model1_oof: np.ndarray,
+    model2_oof: np.ndarray,
+    model3_oof: np.ndarray,
+    model4_oof: np.ndarray,
+    y: pd.Series,
+) -> Callable[[Trial], float]:
+
+    params = {
+        "alpha": trial.suggest_float("alpha", 0, 1),
+        "beta": trial.suggest_float("beta", 0, 1),
+        "gamma": trial.suggest_float("gamma", 0, 1),
+    }
+
+    def ensemble_oof(alpha: float, beta: float, gamma: float):
+        delta = 1 - (alpha + beta + gamma)
+        ensemble_model = (
+            alpha * model1_oof
+            + beta * model2_oof
+            + gamma * model3_oof
+            + delta * model4_oof
+        )
+
+        score = log_loss(y, ensemble_model)
+        return score
+
+    score = ensemble_oof(**params)
+
+    return score

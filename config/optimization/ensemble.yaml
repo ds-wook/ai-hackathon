@@ -1,0 +1,9 @@
+dataset:
+  path: ../../input/ai-hackaton
+
+optimization:
+  trials: 100
+  params: ensemble.yaml
+
+submit:
+  path: ../../submit
