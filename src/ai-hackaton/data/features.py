@@ -22,13 +22,9 @@ def select_features(
     importance_df.columns = ["column_name", "shap_importance"]
 
     importance_df = importance_df.sort_values("shap_importance", ascending=False)
-    print(
-        f'{str(np.round(importance_df.query("shap_importance == 0").shape[0] / importance_df.shape[0], 3)* 100)[:4]}%의 Importance가 0인 Feature가 존재'
-    )
-
     importance_df = importance_df.query("shap_importance != 0")
     boosting_shap_col = importance_df.column_name.values.tolist()
-    print(f"총 {len(boosting_shap_col)}개 선택")
+    print(f"총 {len(train.columns)} 중 {len(boosting_shap_col)}개 선택")
 
     shap_train = train.loc[:, boosting_shap_col]
     shap_test = test.loc[:, boosting_shap_col]
