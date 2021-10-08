@@ -9,9 +9,8 @@ import pandas as pd
 import yaml
 from catboost import CatBoostClassifier, Pool
 from hydra.utils import to_absolute_path
-from lightgbm import LGBMClassifier
 from neptune.new.exceptions import NeptuneMissingApiTokenException
-from optuna.integration import LightGBMPruningCallback, XGBoostPruningCallback
+from optuna.integration import XGBoostPruningCallback
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
 from optuna.study import Study
@@ -69,23 +68,6 @@ class BayesianOptimizer:
             print(f"    '{key}': {value},")
 
     @staticmethod
-    def lgbm_save_params(study: Study, params_name: str):
-        params = study.best_trial.params
-        params["random_state"] = 42
-        params["n_estimators"] = 10000
-        params["boosting_type"] = "gbdt"
-        params["objective"] = "multiclass"
-        params["metric"] = "multi_logloss"
-        params["n_jobs"] = -1
-
-        with open(to_absolute_path("../../config/train/lgbm.yaml")) as f:
-            train_dict = yaml.load(f, Loader=yaml.FullLoader)
-        train_dict["params"] = params
-
-        with open(to_absolute_path("../../config/train/" + params_name), "w") as p:
-            yaml.dump(train_dict, p)
-
-    @staticmethod
     def xgb_save_params(study: optuna.create_study, params_name: str):
         params = study.best_trial.params
         params["random_state"] = 42
@@ -113,59 +95,6 @@ class BayesianOptimizer:
 
         with open(to_absolute_path("../../config/train/" + params_name), "w") as p:
             yaml.dump(train_dict, p)
-
-
-def lgbm_objective(
-    trial: FrozenTrial,
-    X: pd.DataFrame,
-    y: pd.Series,
-    n_fold: int,
-) -> float:
-    params = {
-        "learning_rate": trial.suggest_float("learning_rate", 1e-03, 1e-02),
-        "reg_alpha": trial.suggest_float("reg_alpha", 1e-02, 1),
-        "reg_lambda": trial.suggest_float("reg_lambda", 1e-02, 1),
-        "num_leaves": trial.suggest_int("num_leaves", 16, 64),
-        "min_child_weight": trial.suggest_float("min_child_weight", 1e-02, 1),
-        "colsample_bytree": trial.suggest_uniform("colsample_bytree", 0.1, 1),
-        "subsample": trial.suggest_uniform("subsample", 0.1, 1),
-        "min_child_samples": trial.suggest_int("min_child_samples", 32, 64),
-        "max_depth": trial.suggest_int("max_depth", 4, 16),
-        "n_estimators": 10000,
-        "random_state": 42,
-        "objective": "multiclass",
-        "metric": "multi_logloss",
-        "boosting_type": "gbdt",
-        "n_jobs": -1,
-    }
-    pruning_callback = LightGBMPruningCallback(
-        trial, "multi_logloss", valid_name="valid_1"
-    )
-
-    kf = StratifiedKFold(n_splits=n_fold, random_state=42, shuffle=True)
-    splits = kf.split(X, y)
-    lgbm_oof = np.zeros((X.shape[0], 61))
-
-    for fold, (train_idx, valid_idx) in enumerate(splits, 1):
-        # create dataset
-        X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
-        X_valid, y_valid = X.iloc[valid_idx], y.iloc[valid_idx]
-
-        # model
-        model = LGBMClassifier(**params)
-        model.fit(
-            X_train,
-            y_train,
-            eval_set=[(X_train, y_train), (X_valid, y_valid)],
-            early_stopping_rounds=50,
-            verbose=False,
-            callbacks=[pruning_callback],
-        )
-        # validation
-        lgbm_oof[valid_idx] = model.predict_proba(X_valid)
-
-    score = log_loss(y, lgbm_oof)
-    return score
 
 
 def xgb_objective(
@@ -207,7 +136,7 @@ def xgb_objective(
             y_train,
             eval_set=[(X_train, y_train), (X_valid, y_valid)],
             early_stopping_rounds=50,
-            verbose=False,
+            verbose=100,
             callbacks=[pruning_callback],
         )
         # validation

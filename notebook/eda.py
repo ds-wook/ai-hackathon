@@ -1,7 +1,12 @@
 # %%
 import numpy as np
 import pandas as pd
-
+# %%
+mem1 = pd.read_csv("../input/ai-hackaton/mem-128-2-model1.csv")
+mem1.head()
+# %%
+mem1.sort_values(by="id")
+# %%
 cnn_oof = np.load("../submit/total_cat_oof.npy")
 cnn_preds = np.load("../submit/total_cat_pred.npy")
 

@@ -11,7 +11,7 @@ def _main(cfg: DictConfig):
     submission = pd.read_csv(path + "sample_submission.csv")
 
     cnn_preds = pd.read_csv(submit_path + "mem-128-2-N=2,M=14-10fold.csv")
-    cat_preds = pd.read_csv(submit_path + "10fold_cnn_cat.csv")
+    cat_preds = pd.read_csv(submit_path + "xgb_10fold_stacking_ensemble.csv")
 
     submission.iloc[:, 1:] = (
         cfg.weight.w1 * cnn_preds.iloc[:, 1:]

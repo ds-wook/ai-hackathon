@@ -5,7 +5,7 @@
 |Model|CV|Public|
 |-----|--|------|
 |LGBM(5-Fold)|0.67842|-|
-|XGB(5-Fold)|||
+|Stacking-XGB(10-Fold)|0.48082|-|
 |Cat|0.57042||
 
 ## Requirement

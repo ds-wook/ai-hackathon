@@ -343,3 +343,17 @@ def load_dataset(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     test_preprocess.columns = column_name
 
     return train_preprocess, test_preprocess
+
+
+def make_oof_preds(
+    path: str, oof_path: str, preds_path: str
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    # oof load
+    model_oof = pd.read_csv(path + oof_path)
+    model_oof = model_oof.sort_values(by="id")
+    model_oof = model_oof.drop("id", axis=1).values
+
+    # pred_load
+    model_preds = pd.read_csv(path + preds_path)
+    model_preds = model_preds.drop("id", axis=1).values
+    return model_oof, model_preds
