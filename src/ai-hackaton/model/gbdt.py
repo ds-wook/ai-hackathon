@@ -5,10 +5,9 @@ import neptune.new as neptune
 import numpy as np
 import pandas as pd
 from catboost import CatBoostClassifier, Pool
-from lightgbm import LGBMClassifier
 from neptune.new.integrations import xgboost
 from sklearn.metrics import log_loss
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.model_selection import StratifiedKFold
 from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")

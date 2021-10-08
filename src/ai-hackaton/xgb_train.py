@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from data.dataset import make_oof_preds
 from hydra.utils import to_absolute_path
-from model.boosting_tree import train_kfold_xgb
+from model.gbdt import train_kfold_xgb
 from omegaconf import DictConfig
 
 
