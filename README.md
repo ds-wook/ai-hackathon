@@ -7,7 +7,7 @@
 |LGBM(10-Fold)|0.6784|0.6247|-|
 |Cat(10-fold)|0.5701|0.5777|-|
 |LightAutoML(10-fold)|0.5610|0.5398|-|
-|Stacking-XGB(10-fold)|0.4808|0.4417|-|
+|Stacking-XGB(10-fold)|0.4808|0.4417|0.4209|
 |Stacking-XGB(10-fold) + MEM x 4|-|0.4117|0.38599|
 
 
