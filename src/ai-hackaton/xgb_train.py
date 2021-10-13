@@ -2,8 +2,9 @@ import hydra
 import numpy as np
 import pandas as pd
 from hydra.utils import to_absolute_path
-from model.gbdt import train_kfold_xgb
 from omegaconf import DictConfig
+from sklearn.metrics import log_loss
+from trainer.boosting_tree import XGBTrainer
 
 
 @hydra.main(config_path="../../config/train/", config_name="xgb.yaml")
@@ -28,9 +29,9 @@ def _main(cfg: DictConfig):
     y = train_y["label"]
 
     # model
-    xgb_oof, xgb_preds = train_kfold_xgb(
-        cfg.model.fold, X, y, X_test, dict(cfg.params), cfg.model.verbose
-    )
+    xgb_trainer = XGBTrainer(cfg.model.fold, log_loss)
+    xgb_trainer.train(X, y, cfg.params, cfg.model.verbose)
+    xgb_preds = xgb_trainer.predict(X_test)
 
     submission = pd.read_csv(path + "sample_submission.csv")
     submission.iloc[:, 1:] = xgb_preds
