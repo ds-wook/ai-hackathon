@@ -28,12 +28,12 @@ class LoggerFactory(metaclass=Singleton):
     def __init__(self, log_path: str = None, loglevel=logging.INFO):
         self.loglevel = loglevel
         if log_path is None:
-            self.log_path = Path("../../log")
+            self.log_path = Path("../../log/log")
         else:
             self.log_path = Path(log_path)
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def getLogger(self, log_name):
+    def getLogger(self, log_name: str) -> logging.getLogger:
         fmt = "%(asctime)s [%(name)s|%(levelname)s] %(message)s"
         formatter = logging.Formatter(fmt)
         logger = logging.getLogger(log_name)
@@ -56,7 +56,7 @@ class LoggerFactory(metaclass=Singleton):
 
 
 @contextmanager
-def timer(name, logger):
+def timer(name, logger: logging.getLogger):
     t0 = time.time()
     logger.debug(f"[{name}] start")
     yield

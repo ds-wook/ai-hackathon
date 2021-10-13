@@ -1,11 +1,6 @@
-2021-10-13 22:37:44,085 [trainer.boosting_tree|INFO] fold 0: 0.5467252422821236
-2021-10-13 22:38:29,973 [trainer.boosting_tree|INFO] fold 1: 0.48875451822883365
-2021-10-13 22:39:20,155 [trainer.boosting_tree|INFO] fold 2: 0.5378328404516936
-2021-10-13 22:40:25,403 [trainer.boosting_tree|INFO] fold 3: 0.4440206509873353
-2021-10-13 22:41:16,521 [trainer.boosting_tree|INFO] fold 4: 0.43866331580071166
-2021-10-13 22:41:55,639 [trainer.boosting_tree|INFO] fold 5: 0.5973045889064451
-2021-10-13 22:42:35,233 [trainer.boosting_tree|INFO] fold 6: 0.5011460650808645
-2021-10-13 22:43:22,816 [trainer.boosting_tree|INFO] fold 7: 0.5440385973177186
-2021-10-13 22:44:05,174 [trainer.boosting_tree|INFO] fold 8: 0.5415023212749894
-2021-10-13 22:45:10,701 [trainer.boosting_tree|INFO] fold 9: 0.40382002872296513
-2021-10-13 22:45:10,803 [trainer.boosting_tree|INFO] oof score: 0.5043597264999997
+2021-10-13 22:53:47,808 [trainer.boosting_tree|INFO] fold 0: 0.5140553490034933
+2021-10-13 22:54:39,255 [trainer.boosting_tree|INFO] fold 1: 0.5164974102880935
+2021-10-13 22:55:30,989 [trainer.boosting_tree|INFO] fold 2: 0.5242156441473969
+2021-10-13 22:56:21,319 [trainer.boosting_tree|INFO] fold 3: 0.5102627515797235
+2021-10-13 22:57:01,388 [trainer.boosting_tree|INFO] fold 4: 0.49124442848873695
+2021-10-13 22:57:01,493 [trainer.boosting_tree|INFO] oof score: 0.5112551167014888
