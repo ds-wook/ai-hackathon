@@ -1,5 +1,3 @@
-## Model Learning
-[Learning process](https://app.neptune.ai/ds-wook/ai-hackaton/experiments?split=bth&dash=charts&viewId=standard-view)
 ## Model Architecture
 ![슬라이드1](https://user-images.githubusercontent.com/46340424/136568847-347196a4-e53e-4e04-9674-4cd187ceb155.PNG)
 
